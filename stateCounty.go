@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
 //https://marketplace.api.healthcare.gov/api/v1/counties/by/zip/78778?apikey=d687412e7b53146b2631dc01974ad0a4
 
-func GetCounties(ZipCode int) (*GetCountiesResponse, error) {
+func GetCounties(ZipCode string) (*GetCountiesResponse, error) {
+	//validate that zipcode is appropriate format using regex
 	var urlPrefix string = "https://marketplace.api.healthcare.gov/api/v1/counties/by/zip/"
 	var urlSuffix string = "?apikey=d687412e7b53146b2631dc01974ad0a4"
-	var url string = urlPrefix + strconv.Itoa(ZipCode) + urlSuffix
+	var url string = urlPrefix + ZipCode + urlSuffix
 	resp, err := http.Get(url)
 	if err != nil {
 		//fmt.Println("Error with Get response")
@@ -41,43 +41,7 @@ func GetCounties(ZipCode int) (*GetCountiesResponse, error) {
 }
 
 func GinGetCounties(c *gin.Context) {
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		fmt.Println("Error reading response")
-	}
-	//translate body
-	//verify everything is there
-	//fmt.Println(string(body[:]))
-	//take response from getCounties
-	//translate to string it that can respond with
-	var request GetCountiesRequest
-	if err := json.Unmarshal([]byte(body), &request); err != nil {
-		fmt.Println("Error unmarshalling json to struct for GinGetCounties()")
-	}
-	//fmt.Printf("%+v", request)
-	var intZipCode = 0
-	// check root zipcode
-	if request.ZipCode != "" {
-		intZipCode, err = strconv.Atoi(request.ZipCode)
-		if err != nil {
-			c.String(http.StatusBadRequest, "Invalid zipcode format")
-			return
-		}
-		//check campaign zipcode
-	} else {
-		if request.Campaign != nil && request.Campaign.ZipCode != "" {
-			intZipCode, err = strconv.Atoi(request.Campaign.ZipCode)
-			if err != nil {
-				c.String(http.StatusBadRequest, "Invalid zipcode format")
-				return
-			}
-		} else {
-			c.String(http.StatusBadRequest, "Missing zipcode")
-			return
-		}
-	}
-
-	resp, err := GetCounties(intZipCode)
+	resp, err := GetCounties(c.Param("zipcode"))
 	if err != nil {
 		fmt.Println(err)
 		c.String(http.StatusInternalServerError, "Error retrieving counties")
